@@ -1,0 +1,122 @@
+#!groovy
+def channel = '#devops-builds'
+
+// Jenkins job parameters:
+// environment_name - per folder structure
+// product - icecream
+
+// This Jenkinsfile will likely not work in its current state.
+// It was used for building environments in the Jenkins pipeline.
+
+currentBuild.description = "${environment_name} - ${product}"
+
+@Library('Reform') _
+
+node {
+  try {
+    wrap([$class: 'AnsiColorBuildWrapper', colorMapName: 'xterm']) {
+
+      stage('Checkout') {
+        checkout scm
+      }
+
+      stage('Generate ansible output') {
+        dir ('main-environment') {
+          sh """
+          molecule create
+          molecule syntax
+          molecule verify
+          """
+        }
+          script {
+            if (product.equals('management')) {
+              sh """
+              ansible-playbook -i "127.0.0.1," -c local main-environment/playbook.yml
+              """
+            } else {
+              sh """
+              ansible-playbook -i "127.0.0.1," -c local --extra-vars='{"products": ["${env.product}"]}' main-environment/playbook.yml
+              """
+            }
+          }
+      }
+
+      withCredentials([
+          [$class: 'StringBinding', credentialsId: 'IDAM_ARM_CLIENT_SECRET', variable: 'ARM_CLIENT_SECRET'],
+          [$class: 'StringBinding', credentialsId: 'IDAM_ARM_CLIENT_ID', variable: 'ARM_CLIENT_ID'],
+          [$class: 'StringBinding', credentialsId: 'IDAM_ARM_TENANT_ID', variable: 'ARM_TENANT_ID'],
+          [$class: 'StringBinding', credentialsId: 'IDAM_ARM_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID']
+      ]) {
+
+        stage('TF init for main-environment product/environment_name') {
+          sh '''
+          # otherwise ansible-generated stays owned by root
+          sudo chown -R jenkins main-environment/ansible-generated
+          find
+
+          cd main-environment/ansible-generated/uksouth/${product}/${environment_name}
+          terraform init -lock=false
+          cd -
+
+          '''
+        }
+
+        stage('TF plan and apply for main-environment') {
+        // plan and apply the main-environment if on master
+          dir ("main-environment/ansible-generated/uksouth/${product}/${environment_name}") {
+
+            def apply = false
+            def exitCode = sh(returnStatus: true, script: "terraform plan -lock=false -out=${environment_name}-${product}.plan -detailed-exitcode")
+
+            echo "Terraform Plan Exit Code: ${exitCode}"
+            if (exitCode == 0) {
+                // Nothing to do - the infrastructure is up to date.
+                currentBuild.result = 'SUCCESS'
+            } else if (exitCode == 1) {
+                // There was some sort of problem working out the plan.
+                notifyBuildResult channel: "${channel}", color: '#0080ff', message: "Plan Failed - ${environment_name} - ${product}"
+                currentBuild.result = 'FAILURE'
+            } else if (exitCode == 2) {
+                notifyBuildResult channel: "${channel}", color: 'good', message: "Plan Awaiting Approval - ${environment_name} - ${product}"
+                try {
+                  input 'Apply Plan?'
+                  apply = true
+                } catch (err) {
+                  notifyBuildResult channel: "${channel}", color: 'warning', message: "Plan Discarded - ${environment_name} - ${product}"
+                  apply = false
+                  currentBuild.result = 'UNSTABLE'
+                }
+            }
+            if (apply) {
+              stage(name: 'Apply') {
+                def applyExitCode = sh(returnStatus: true, script: "terraform apply ${environment_name}-${product}.plan")
+                if (applyExitCode == 0) {
+                  notifyBuildResult channel: "${channel}", color: 'good', message: "Changes Applied - ${environment_name} - ${product}"
+                } else {
+                  notifyBuildResult channel: "${channel}", color: 'danger', message: "Apply Failed - ${environment_name} - ${product}"
+                  currentBuild.result = 'FAILURE'
+                }
+              }
+            }
+          }
+        }
+
+      }
+    }
+
+  } catch (err) {
+    notifyBuildFailure channel: "${channel}"
+    throw err
+  } finally {
+    stage('Cleanup') {
+      dir ('main-environment') {
+        sh '''
+          sudo chown -R jenkins ansible-generated
+          molecule destroy
+        '''
+      }
+      deleteDir()
+    }
+  }
+
+}
