@@ -474,7 +474,6 @@ sec_read: &sec_read
 key_vault_permissions:
   # max of 16 users, as per TF docs.
   # just an example user for now:
-  # Example:
   dcd_dev_jenkins:
     object_id: "lookedupfromvault"
     <<: *key_read
