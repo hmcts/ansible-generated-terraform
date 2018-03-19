@@ -64,42 +64,26 @@ legacy:
 # (tasks/3-environment.yml)
 environments:
   ccidam:
-    - preprod
-    - demo
     - prod
   probate:
     - demo
-    - preprod
   cmc:
     - demo
     - preprod
   divorce:
     - demo
-    - preprod
   ccfr:
     - demo
     - preprod
   ccpay:
-    - demo
     - preprod
   sscs:
     - demo
-    - preprod
   ccd:
     - devb
-    - demo
-    - preprod
-    - prod
   dm:
     - dev
     - test
-    - demo
-    - preprod
-    - prod
-  em:
-    - dev
-    - test
-    - demo
   management:
     - management
 
@@ -115,42 +99,26 @@ domain: ".reform.hmcts.net"
 environments_azure_subscription_ids:
   management: "3rd-example-azure-subscription"
   ccidam:
-    preprod: "2nd-example-azure-subscription"
-    demo: "example-azure-subscription"
     prod: "2nd-example-azure-subscription"
   probate:
     demo: "example-azure-subscription"
-    preprod: "2nd-example-azure-subscription"
   cmc:
     demo: "example-azure-subscription"
     preprod: "2nd-example-azure-subscription"
   divorce:
     demo: "example-azure-subscription"
-    preprod: "2nd-example-azure-subscription"
   ccfr:
     preprod: "2nd-example-azure-subscription"
     demo: "example-azure-subscription"
   ccpay:
     preprod: "2nd-example-azure-subscription"
-    demo: "example-azure-subscription"
   sscs:
-    preprod: "2nd-example-azure-subscription"
     demo: "example-azure-subscription"
   ccd:
     devb: "example-azure-subscription"
-    preprod: "2nd-example-azure-subscription"
-    demo: "example-azure-subscription"
-    prod: "2nd-example-azure-subscription"
   dm:
     dev: "example-azure-subscription"
     test: "example-azure-subscription"
-    demo: "example-azure-subscription"
-    preprod: "2nd-example-azure-subscription"
-    prod: "2nd-example-azure-subscription"
-  em:
-    dev: "example-azure-subscription"
-    test: "example-azure-subscription"
-    demo: "example-azure-subscription"
 
 output_folder: "ansible-generated"
 
@@ -279,6 +247,16 @@ servers:
         count: 1
         env_tag: demo
   cmc:
+    demo:
+      - name: web
+        role_tag: frontend
+      - name: app
+        role_tag: backend
+      - name: cache
+        count: 1
+        role_tag: redis
+      - name: data
+        count: 1
     preprod:
       - name: web
         role_tag: frontend
@@ -496,14 +474,15 @@ sec_read: &sec_read
     - "list"
 
 key_vault_permissions:
-  # max of 16 users, as per TF docs :/
+  # max of 16 users, as per TF docs.
   # just an example user for now:
+  # Example:
   dcd_dev_jenkins:
-    object_id: "<OID>"
+    object_id: "lookedupfromvault"
     <<: *key_read
     <<: *sec_read
   devops:
-    object_id: "<OID>"
+    object_id: "lookedupfromvault"
     <<: *key_write
     <<: *sec_write
 
