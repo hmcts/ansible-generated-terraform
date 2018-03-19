@@ -1,0 +1,68 @@
+---
+
+- name: "Make folders for management"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/{{ location }}/management/management/state-file-storage"
+
+- name: "Merge management server with default management vars"
+  set_fact:
+    server_contents: "{{ mgmt_default_server_vars | combine(mgmt_servers[server]) }}"
+
+- name: "Copy modules"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ output_folder }}/modules/mgmt-vm"
+  with_fileglob:
+    - "{{ role_path }}/modules/vm/*.tf"
+
+- name: "Copy modules"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ output_folder }}/modules/mgmt-datadisk-vm"
+  with_fileglob:
+    - "{{ role_path }}/modules/vm/*.tf"
+
+- name: "Copy modules windows"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ output_folder }}/modules/mgmt-windows-vm"
+  with_fileglob:
+    - "{{ role_path }}/modules/vm/*.tf"
+
+- name: "Template modules mgmt-main.tf.j2 to main.tf"
+  template:
+    src: templates/mgmt-main.tf.j2
+    dest: "{{ output_folder }}/modules/mgmt-vm/main.tf"
+
+- name: "Template modules mgmt-main-datadisk.tf.j2 to main.tf"
+  template:
+    src: templates/mgmt-datadisk-main.tf.j2
+    dest: "{{ output_folder }}/modules/mgmt-datadisk-vm/main.tf"
+
+- name: "Template modules mgmt-windows-main.tf.j2 to main.tf"
+  template:
+    src: templates/mgmt-windows-main.tf.j2
+    dest: "{{ output_folder }}/modules/mgmt-windows-vm/main.tf"
+
+- name: "Template state-file-storage.tf with correct subscription ID"
+  template:
+    src: templates/mgmt-state-file-storage.tf.j2
+    dest: "{{ output_folder }}/{{ location }}/management/management/state-file-storage/main.tf"
+
+- name: "template team state file config"
+  template:
+    src: "templates/mgmt-state.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/management/management/state.tf"
+  tags:
+    - destroy_nightly
+
+- name: "Template provider.tf with correct subscription ID"
+  template:
+    src: templates/mgmt-provider.tf.j2
+    dest: "{{ output_folder }}/{{ location }}/management/management/provider.tf"
+
+- name: "template for management vms"
+  template:
+    src: "templates/management.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/management/management/vm-{{ server }}.tf"

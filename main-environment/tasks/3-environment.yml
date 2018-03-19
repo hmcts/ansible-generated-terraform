@@ -1,0 +1,136 @@
+---
+- name: "Make folder for {{ environment_name }}"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}"
+  tags:
+    - destroy_nightly
+
+- name: "Make folder for modules"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/modules/vm"
+
+- name: "Make folder for modules with datadisk"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/modules/vm-datadisk"
+
+- name: "Make folder for management modules"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/modules/mgmt-vm"
+
+- name: "Make folder for windows management modules"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/modules/mgmt-windows-vm"
+
+- name: "Make folder for management datadisk modules"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/modules/mgmt-datadisk-vm"
+
+- name: "Copy modules"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ output_folder }}/modules/vm"
+  with_fileglob:
+    - "{{ role_path }}/modules/vm/*.tf"
+
+- name: "Copy modules for datadisk"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ output_folder }}/modules/vm-datadisk"
+  with_fileglob:
+    - "{{ role_path }}/modules/vm/*.tf"
+
+- name: "Template modules main.tf.j2 to main.tf"
+  template:
+    src: templates/main.tf.j2
+    dest: "{{ output_folder }}/modules/vm/main.tf"
+
+- name: "Template modules main-datadisk.tf.j2 to main.tf"
+  template:
+    src: templates/main-datadisk.tf.j2
+    dest: "{{ output_folder }}/modules/vm-datadisk/main-datadisk.tf"
+
+- name: "Make folder for {{ environment_name }}/state-file-storage"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/state-file-storage"
+
+- name: "Template state-file-storage.tf with correct subscription ID"
+  template:
+    src: templates/state-file-storage.tf.j2
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/state-file-storage/main.tf"
+
+- name: "Template provider.tf with correct subscription ID"
+  template:
+    src: templates/provider.tf.j2
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/provider.tf"
+  tags:
+    - destroy_nightly
+
+- name: "Template team state file config"
+  template:
+    src: "templates/state.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/state.tf"
+  tags:
+    - destroy_nightly
+
+- name: "Template storage.tf.j2 for {{ environment_name }} {{ product }}"
+  template:
+    src: "templates/storage.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/storage.tf"
+
+- name: "Template networking.tf.j2 for {{ environment_name }} {{ product }} (not for legacy products)"
+  template:
+    src: "templates/networking.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/networking.tf"
+  when: product not in legacy
+
+- name: "Template nsg.tf.j2 for {{ environment_name }} {{ product }}"
+  template:
+    src: "templates/nsg.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/nsg.tf"
+  when: product not in legacy
+
+# not implemented in plan for now
+# - name: "template traffic-manager.tf.j2 for {{ environment_name }} {{ product }}"
+#   template:
+#     src: "templates/traffic-manager.tf.j2"
+#     dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/traffic-manager.tf"
+#   when: product not in legacy
+
+- name: "template load-balancer.tf.j2 for {{ environment_name }} {{ product }}"
+  template:
+    src: "templates/load-balancer.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/load-balancer.tf"
+  when: product not in legacy
+
+- name: "template container-registry.tf.j2 for {{ environment_name }} {{ product }}"
+  template:
+    src: "templates/container-registry.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/container-registry.tf"
+  when: product not in legacy and product in web_apps
+
+- name: "loop over tiers for {{ product }} and include 4-vm-tier.yml"
+  include: "4-vm-tier.yml"
+  with_items: "{{ servers[product][environment_name] }}"
+  loop_control:
+    loop_var: tier
+
+- name: "Loop over web_apps for {{ product }} and include 5-web_app.yml"
+  include: "5-web_app.yml"
+  with_items: "{{ web_apps[product] }}"
+  loop_control:
+    loop_var: web_app
+  when: product not in legacy and product in web_apps
+
+- name: "Loop over databases for {{ product }} and include 7-dbaas.yml"
+  include: "7-dbaas.yml"
+  with_items: "{{ databases[product] }}"
+  loop_control:
+    loop_var: database
+  when: product not in legacy and product in databases

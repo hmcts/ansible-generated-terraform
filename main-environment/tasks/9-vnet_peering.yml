@@ -1,0 +1,18 @@
+---
+- name: "Make folder for {{ product }}/{{ vnet_peering }}"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ vnet_peering }}"
+  when: vnet_peering != 'management'
+
+- name: "template vnet-peering.tf.j2 for {{ product }}/{{ vnet_peering }}vnet_peering.tf"
+  template:
+    src: "templates/vnet-peering.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ vnet_peering }}/vnet_peering.tf"
+  when: vnet_peerings is defined and vnet_peering != 'management'
+
+- name: "vnet-peering.tf.j2 for DevOpsVnet_Peering.tf"
+  template:
+    src: "templates/vnet-peering.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/management/{{ vnet_peering }}/vnet_peering.tf"
+  when: vnet_peering == 'management'

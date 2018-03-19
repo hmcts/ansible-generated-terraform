@@ -1,0 +1,17 @@
+- name: "Make folder for {{ product }}/{{ keyvault }}"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ keyvault }}"
+  when: keyvault != 'management'
+
+- name: "template keyvault.tf.j2 for {{ product }}/{{ keyvault }}KeyVault.tf"
+  template:
+    src: "templates/keyvault.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ keyvault }}/keyvault.tf"
+  when: keyvaults is defined and keyvault != 'management'
+
+- name: "template keyvault.tf.j2 for DevOpsKeyVault.tf"
+  template:
+    src: "templates/keyvault.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/management/{{ keyvault }}/keyvault.tf"
+  when: keyvault == 'management'

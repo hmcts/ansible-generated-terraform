@@ -1,0 +1,6 @@
+---
+
+- name: "Template dbaas.tf.j2 for {{ product }} {{ environment_name }} {{ database.name }}"
+  template:
+    src: "templates/dbaas.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/db-{{ database.name }}.tf"

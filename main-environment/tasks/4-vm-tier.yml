@@ -1,0 +1,14 @@
+---
+
+- name: "Merge server with default vars"
+  set_fact:
+    server_instance: "{{ default_server_vars | combine(tier) }}"
+
+- name: "Make variable for env_team_server"
+  set_fact:
+    env_team_server: "{{ environment_name }}{{ product | title }}{{ tier.name | title}}"
+
+- name: "Template for tier {{ tier.name }}"
+  template:
+    src: "templates/tier.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/vm-{{ tier.name }}.tf"

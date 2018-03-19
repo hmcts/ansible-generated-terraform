@@ -1,0 +1,37 @@
+---
+- name: "Make folder for {{ product }}"
+  file:
+    state: directory
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}"
+  tags:
+    - destroy_nightly
+
+- name: "loop over environments and include environment.yml"
+  include: "3-environment.yml"
+  with_items: "{{ environments[product] }}"
+  loop_control:
+    loop_var: environment_name
+  tags:
+    - destroy_nightly
+
+- name: "Include additional management stuff"
+  include: "6-management-vms.yml"
+  with_items: "{{ mgmt_servers }}"
+  loop_control:
+    loop_var: server
+
+- name: "loop over keyvaults and include keyvaults.yml"
+  include: "8-keyvaults.yml"
+  with_items: "{{ keyvaults }}"
+  loop_control:
+    loop_var: keyvault
+  tags:
+    - keyvault
+
+- name: "loop over vnet_peering and include vnet_peering.yml"
+  include: "9-vnet_peering.yml"
+  with_items: "{{ vnet_peerings }}"
+  loop_control:
+    loop_var: vnet_peering
+  tags:
+    - vnet_peering
