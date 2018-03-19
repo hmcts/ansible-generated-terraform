@@ -46,7 +46,6 @@ products:
   - sscs
   - ccd
   - dm
-  - em
 
 # legacy products (don't set up network etc for these)
 legacy:
@@ -59,7 +58,6 @@ legacy:
   - sscs
   - ccd
   - dm
-  - em
 
 # (tasks/3-environment.yml)
 environments:
