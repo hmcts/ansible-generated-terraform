@@ -1,0 +1,22 @@
+---
+driver:
+  name: docker
+
+docker:
+  containers:
+    - name: infrastructure-test-${BRANCH_NAME}-${BUILD_NUMBER}
+      image: centos
+      image_version: latest
+      build_image: yes
+      dockerfile: Dockerfile
+      privileged: yes
+      cap_add:
+        - SYS_ADMIN
+      volume_mounts:
+        - "${PWD}/ansible-generated:/ansible-generated"
+
+verifier:
+  name: testinfra
+
+ansible:
+  playbook: molecule_play.yml
