@@ -1,5 +1,13 @@
 # Ansible and Terraform coupling for generating environments
 
+## Acknowledgements
+
+We sometimes complained about this, but it got the job done and it's really quite clever in places.
+
+Written and designed by Sam Norbury and James Portman, with contributions by Adam Dean, Dan Merron, among many others.
+
+Original proposal and proof of concept written by Byron Sorgdrager.
+
 ## The Background
 
 While no longer in service, this repository houses the code used to generate a series of machines and environments for the HMCTS Reform Project, during its private-beta deployment.
