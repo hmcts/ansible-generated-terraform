@@ -1,0 +1,32 @@
+resource "azurerm_resource_group" "{{ environment_name }}{{ product | title }}{{ database.name }}RG" {
+  name     = "{{ environment_name }}{{ product | title }}{{ database.name }}RG"
+  location = "West Europe"
+}
+
+resource "azurerm_postgresql_server" "{{ environment_name }}{{ product | lower }}{{ database.name }}" {
+  name                = "{{ environment_name }}{{ product | lower }}{{ database.name }}"
+  location            = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}{{ database.name }}RG.location}"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}{{ database.name }}RG.name}"
+
+  sku {
+    name = "PGSQLS800"
+    capacity = 100
+    tier = "Standard"
+  }
+
+  administrator_login = "{{ database.user }}"
+  administrator_login_password = "{{ database.password }}"
+  version = "9.6"
+  storage_mb = "128000"
+  ssl_enforcement = "Enabled"
+}
+
+{% for ip in database.whitelist_ips %}
+resource "azurerm_postgresql_firewall_rule" "{{ environment_name }}{{ product | lower }}{{ database.name }}FW{{ loop.index }}" {
+  name                = "{{ environment_name }}{{ product | lower }}{{ database.name }}FW{{ loop.index }}"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}{{ database.name }}RG.name}"
+  server_name         = "${azurerm_postgresql_server.{{ environment_name }}{{ product | lower }}{{ database.name }}.name}"
+  start_ip_address    = "{{ ip[0] }}"
+  end_ip_address      = "{{ ip[1] }}"
+}
+{% endfor %}

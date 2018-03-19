@@ -1,0 +1,15 @@
+resource "azurerm_storage_account" "{{ environment_name | lower }}{{ product | lower }}csa" {
+  name                = "{{ environment_name | lower }}{{ product | lower }}csa"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.name}"
+  location            = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.location}"
+  account_tier        = "Standard"
+  account_replication_type = "GRS"
+}
+
+resource "azurerm_container_registry" "{{ environment_name }}{{ product | title }}CR" {
+  name                = "{{ environment_name }}{{ product | title }}CR"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.name}"
+  location            = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.location}"
+  admin_enabled       = true
+  sku                 = "Basic"
+}

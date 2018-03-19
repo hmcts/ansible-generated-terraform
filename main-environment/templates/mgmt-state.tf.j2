@@ -1,0 +1,12 @@
+# {{ template_warning }}
+
+terraform {
+  backend "azurerm" {
+    arm_subscription_id = "{{ environments_azure_subscription_ids.management }}"
+    # storage_account_name - subscription ID, with '-' removed, then only the first 24 chars
+    storage_account_name = "{{ environments_azure_subscription_ids.management.replace('-','')[:24] }}"
+    container_name = "{{ state_storage_container_name }}"
+    resource_group_name = "{{ state_rg }}"
+    key = "reformMgmtState.tf"
+  }
+}

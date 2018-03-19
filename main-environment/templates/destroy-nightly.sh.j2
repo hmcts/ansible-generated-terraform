@@ -1,0 +1,14 @@
+{% for product in destroy_nightly %}
+{% for environment in destroy_nightly[product] %}
+#!/bin/bash
+set -e
+# terraform destroy from this folder:
+cd ../{{ product }}/{{ environment }}/
+terraform init
+terraform plan -destroy
+# this is just being tested for now so don't delete anything yet
+# terraform destroy --force
+cd -
+
+{% endfor %}
+{% endfor %}
