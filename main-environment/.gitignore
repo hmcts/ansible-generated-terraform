@@ -1,0 +1,5 @@
+credentials
+ansible-generated/
+playbook.retry
+.molecule/
+*.swp
