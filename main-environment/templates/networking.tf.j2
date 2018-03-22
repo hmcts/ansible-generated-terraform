@@ -1,0 +1,35 @@
+# {{ template_warning }}
+
+# Create vNet
+
+resource "azurerm_virtual_network" "{{ environment_name }}{{ product | title }}Vnet" {
+  name                = "{{ environment_name }}{{ product | title }}Vnet"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  address_space       = ["{{ ip_ranges[environment_name].address_space }}"]
+  location            = "{{ location }}"
+}
+
+# Create subnets
+
+{% for tier in subnets[product] %}
+resource "azurerm_subnet" "{{ environment_name }}{{ product | title }}{{ tier | title }}SN" {
+  name                = "{{ environment_name }}{{ product | title }}{{ tier | title }}SN"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  virtual_network_name = "{{ environment_name }}{{ product | title }}Vnet"
+  address_prefix = "{{ ip_ranges[environment_name][tier] }}"
+  network_security_group_id = "${azurerm_network_security_group.{{ environment_name }}{{ product | title }}{{ tier | title }}NSG.id}"
+}
+{% endfor %}
+
+
+# Create all Public IP addresses
+{% if product in public_lb %}
+  {% for lb_ext in public_lb[product] %}
+  resource "azurerm_public_ip" "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}PIP" {
+    name                         = "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}PIP"
+    location                     = "{{ location }}"
+    resource_group_name          = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+    public_ip_address_allocation = "static"
+  }
+  {% endfor %}
+{% endif %}

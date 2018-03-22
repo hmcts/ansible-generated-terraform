@@ -1,0 +1,9 @@
+---
+- name: "Merge web_app with default vars"
+  set_fact:
+    web_app_instance: "{{ default_web_apps_vars | combine(web_app) }}"
+
+- name: "template web-app.tf.j2 for {{ environment_name }} {{ product }} {{ web_app_instance.name }}"
+  template:
+    src: "templates/web-app.tf.j2"
+    dest: "{{ output_folder }}/{{ location }}/{{ product }}/{{ environment_name }}/app-service-plan{{ web_app_instance.name }}.tf"

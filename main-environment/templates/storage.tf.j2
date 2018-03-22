@@ -1,0 +1,13 @@
+# {{ template_warning }}
+
+resource "azurerm_resource_group" "{{ environment_name }}{{ product | title }}RG" {
+  name     = "{{ environment_name }}{{ product | title }}RG"
+  location = "{{ location }}"
+}
+
+{% if product not in legacy %}
+resource "azurerm_resource_group" "{{ environment_name }}{{ product | title }}VnetRG" {
+  name     = "{{ environment_name }}{{ product | title }}VnetRG"
+  location = "{{ location }}"
+}
+{% endif %}

@@ -1,0 +1,9 @@
+---
+
+- name: loop over locations and include location.yml"
+  include: "1-location.yml"
+  with_items: "{{ locations }}"
+  loop_control:
+    loop_var: location
+  tags:
+    - destroy_nightly

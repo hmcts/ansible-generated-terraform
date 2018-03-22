@@ -1,0 +1,102 @@
+# {{ template_warning }}
+
+{% if product not in legacy %}
+resource "azurerm_resource_group" "{{ environment_name }}{{ product | title }}{{ tier.name | title }}RG" {
+  name     = "{{ environment_name }}{{ product | title }}{{ tier.name | title }}RG"
+  location = "{{ location }}"
+}
+{% endif %}
+
+# Main VM storage account
+resource "azurerm_storage_account" "{{ env_team_server | lower }}" {
+  name                = "{{ env_team_server | lower }}"
+{% if product in legacy %}
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.name}"
+{% else %}
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}{{ tier.name | title }}RG.name}"
+{% endif %}
+
+  location     = "{{ location }}"
+  {% if product == "ccidam" and tier.name == "proxy" %}
+  account_tier = "premium"
+  {% else %}
+  account_tier = "{{ storage_account_tier }}"
+  {% endif %}
+  account_replication_type = "{{ storage_account_replication_type }}"
+
+  tags {
+    env = "{{ environment_name }}"
+    product = "{{ tier.product_tag| default(product) }}"
+  }
+}
+
+# Availability Set
+resource "azurerm_availability_set" "{{ environment_name }}{{ product | title }}{{ tier.name | title }}AVset" {
+  name                = "{{ environment_name }}{{ product | title }}{{ tier.name | title }}AVset"
+  location            = "{{ location }}"
+{% if product in legacy %}
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.name}"
+{% else %}
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}{{ tier.name | title }}RG.name}"
+{% endif %}
+  tags {
+    env = "{{ environment_name }}"
+    product = "{{ tier.product_tag| default(product) }}"
+  }
+}
+
+module "vm-{{ env_team_server }}" {
+  {% if server_instance.additional_disk_size_gb is defined %}
+  source = "../../../modules/vm-datadisk"
+  {% else %}
+  source = "../../../modules/vm"
+  {% endif %}
+  {% if product in legacy %}
+  vm_name = "beta{{ environment_name | title }}{{ product | title }}{{ tier.name | title }}"
+  {% else %}
+  vm_name = "{{ environment_name }}{{ product | title }}{{ tier.name | title }}"
+  {% endif %}
+
+  {% if server_instance.additional_disk_size_gb is defined %}
+  additional_disk_size_gb = "{{ server_instance.additional_disk_size_gb }}"
+  {% endif %}
+
+  {% if product in legacy %}
+  resource_group = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}RG.name}"
+  {% else %}
+  resource_group = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}{{ tier.name | title }}RG.name}"
+  {% endif %}
+
+  {% if product == "ccidam" %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids[product][environment_name] }}/resourceGroups/{{ vnet_rg_map[environment_name] }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_map[environment_name] }}/subnets/{{ ccidam_subnet_prefix_map[environment_name][tier.name] }}"
+  {% elif server_instance.name == "webadmin" %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids[product][environment_name] }}/resourceGroups/{{ vnet_rg_map[environment_name] }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_map[environment_name] }}/subnets/{{ subnet_prefix_map[environment_name] }}WebSN"
+  {% elif server_instance.name == "webpl" %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids[product][environment_name] }}/resourceGroups/{{ vnet_rg_map[environment_name] }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_map[environment_name] }}/subnets/{{ subnet_prefix_map[environment_name] }}WebSN"
+  {% elif server_instance.name == "webvw" %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids[product][environment_name] }}/resourceGroups/{{ vnet_rg_map[environment_name] }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_map[environment_name] }}/subnets/{{ subnet_prefix_map[environment_name] }}WebSN"
+  {% elif server_instance.name == "webshow" %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids[product][environment_name] }}/resourceGroups/{{ vnet_rg_map[environment_name] }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_map[environment_name] }}/subnets/{{ subnet_prefix_map[environment_name] }}WebSN"
+  {% elif product in legacy %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids[product][environment_name] }}/resourceGroups/{{ vnet_rg_map[environment_name] }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_map[environment_name] }}/subnets/{{ subnet_prefix_map[environment_name] }}{{ server_instance.name | title }}SN"
+  {% else %}
+  subnet_id = "${azurerm_subnet.{{ environment_name }}{{ product | title }}{{ tier.name | title }}SN.id}"
+  {% endif %}
+
+  avset_id = "${azurerm_availability_set.{{ environment_name }}{{ product | title }}{{ tier.name | title }}AVset.id}"
+  storage_account = "${azurerm_storage_account.{{ env_team_server | lower }}.name}"
+  diagnostics_storage_account = "${azurerm_storage_account.{{ env_team_server | lower }}.name}"
+  location = "{{ location }}"
+  vm_size = "{{ server_instance.size }}"
+  instance_count = {{ server_instance.count }}
+  env = "{{ environment_name }}"
+  ssh_key = "{{ ssh_key }}"
+  product = "{{ tier.product_tag | default(product) }}"
+  env = "{{ tier.env_tag | default(environment_name) }}"
+  {% if product == "ccidam" and tier.name == "proxy" %}
+  role = "idam-proxy"
+  {% else %}
+  role = "{{ tier.role_tag | default(tier.name) }}"
+  {%endif%}
+  tier = "{{ tier.name }}"
+}

@@ -1,0 +1,60 @@
+# {{ template_warning }}
+
+{% for tier in security[product] %}
+# ansible looping for {{ tier }}
+
+# Create a Network Security Group per Subnet
+# NSG for {{ tier }} Subnet
+resource "azurerm_network_security_group" "{{ environment_name }}{{ product | title }}{{ tier | title }}NSG" {
+  name                = "{{ environment_name }}{{ product | title }}{{ tier | title }}NSG"
+  location            = "{{ location }}"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+
+
+  # auto generated rules from vars:
+  {% for rule in all_tiers_security[product] + security[product][tier] %}
+  security_rule {
+    name                       = "{{ tier }}_{{loop.index }}"
+    priority                   = {{ loop.index + 100 }}
+    direction                  = "{{ rule.direction | default('Inbound') }}"
+    access                     = "Allow"
+    protocol                   = "{{ rule.protocol | default('Tcp') }}"
+    source_port_range          = "*"
+    destination_port_range     = "{{ rule.port }}"
+    source_address_prefix      = "{{ rule.src_ip | default(ip_ranges[environment_name][tier]) }}"
+    destination_address_prefix = "{{ rule.dst_ip | default(ip_ranges[environment_name][tier]) }}"
+  }
+  {% endfor %}
+
+
+# required rules for isolation
+  security_rule {
+    name                       = "isolate_inbound"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "{{ ip_ranges[environment_name][tier] }}"
+  }
+  security_rule {
+    name                       = "isolate_outbound"
+    priority                   = 200
+    direction                  = "Outbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "{{ ip_ranges[environment_name][tier] }}"
+    destination_address_prefix = "*"
+  }
+
+  tags {
+    environment = "{{ environment_name }}"
+    product = "{{ product }}"
+  }
+}
+
+{% endfor %}

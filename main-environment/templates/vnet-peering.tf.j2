@@ -1,0 +1,24 @@
+# {{ template_warning }}
+
+{% for rgnames in vnet_resource_groups %}
+
+resource "azurerm_resource_group" "{{ rgnames.name }}" {
+  name     = "{{ rgnames.name }}"
+  location = "UK South"
+}
+
+{% endfor %}
+
+{% for peernames in vnet_peers %}
+
+ resource "azurerm_virtual_network_peering" "{{ peernames.name }}" {
+   name                          = "{{ peernames.name }}"
+   resource_group_name           = "{{ peernames.resource_group_name }}"
+   virtual_network_name          = "{{ peernames.local_vnet }}"
+   remote_virtual_network_id     = "{{ peernames.remote_vnet_id }}"
+   allow_virtual_network_access  = "{{ peernames.allow_virtual_network_access }}"
+   allow_forwarded_traffic       = "{{ peernames.allow_forwarded_traffic }}"
+   allow_gateway_transit         = "{{ peernames.allow_gateway_transit }}"
+ }
+
+{% endfor %}

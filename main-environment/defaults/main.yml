@@ -1,0 +1,2 @@
+---
+jenkins_bootstrap_token: "{{ lookup('hashi_vault', 'secret=secret/devops/jenkins/bootstrap-token:value') }}"

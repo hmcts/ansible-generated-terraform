@@ -1,0 +1,18 @@
+---
+- hosts: all
+  vars:
+    - jenkins_bootstrap_token: "testing_bootstrap_token"
+    - molecule: true
+  tasks:
+    - name: include molecule specific vars
+      include_vars: 'molecule_vars.yml'
+      when: molecule is defined
+
+    - name: Import tasks
+      import_tasks: tasks/main.yml
+      when: molecule is defined
+
+    - name: Run in normal mode
+      include_role:
+        name: main-environment
+      when: molecule is not defined

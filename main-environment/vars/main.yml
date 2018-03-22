@@ -1,0 +1,574 @@
+---
+
+# (tasks/1-location.yml)
+locations:
+  - "uksouth"
+
+keyvaults:
+  - dev
+  - test
+  - demo
+  - preprod
+  - prod
+  - management
+
+vnet_peerings:
+  - management
+
+# Default values for peerings
+vnet_peers_default_vars: &vnet_peers_default_vars
+  allow_virtual_network_access: false
+  allow_forwarded_traffic: false
+  allow_gateway_transit: false
+
+vnet_resource_groups: []
+
+vnet_peers: []
+
+# Defined twice to reduce work requried for defining keyvaults. Some future work would allow us to remove the product defined subscriptions.
+
+subscriptions:
+  dev: "example-azure-subscription"
+  test: "example-azure-subscription"
+  demo: "example-azure-subscription"
+  preprod: "2nd-example-azure-subscription"
+  prod: "2nd-example-azure-subscription"
+  mgmt: "3rd-example-azure-subscription"
+
+# (tasks/2-product.yml)
+products:
+  - ccidam
+  - probate
+  - cmc
+  - divorce
+  - ccfr
+  - ccpay
+  - sscs
+  - ccd
+  - dm
+
+# legacy products (don't set up network etc for these)
+legacy:
+  - ccidam
+  - probate
+  - cmc
+  - divorce
+  - ccfr
+  - ccpay
+  - sscs
+  - ccd
+  - dm
+
+# (tasks/3-environment.yml)
+environments:
+  ccidam:
+    - prod
+  probate:
+    - demo
+  cmc:
+    - demo
+    - preprod
+  divorce:
+    - demo
+  ccfr:
+    - demo
+    - preprod
+  ccpay:
+    - preprod
+  sscs:
+    - demo
+  ccd:
+    - devb
+  dm:
+    - dev
+    - test
+  management:
+    - management
+
+# seems to only be used for keyvault, should potentially come from env var?
+azure_tenant_id: "<lookedupfromvault>"
+
+# state file storage location
+state_rg: "tfStateRG"
+state_storage_container_name: "statefiles"
+
+domain: ".reform.hmcts.net"
+
+environments_azure_subscription_ids:
+  management: "3rd-example-azure-subscription"
+  ccidam:
+    prod: "2nd-example-azure-subscription"
+  probate:
+    demo: "example-azure-subscription"
+  cmc:
+    demo: "example-azure-subscription"
+    preprod: "2nd-example-azure-subscription"
+  divorce:
+    demo: "example-azure-subscription"
+  ccfr:
+    preprod: "2nd-example-azure-subscription"
+    demo: "example-azure-subscription"
+  ccpay:
+    preprod: "2nd-example-azure-subscription"
+  sscs:
+    demo: "example-azure-subscription"
+  ccd:
+    devb: "example-azure-subscription"
+  dm:
+    dev: "example-azure-subscription"
+    test: "example-azure-subscription"
+
+output_folder: "ansible-generated"
+
+subnets: []
+#  example:
+#    - app
+#    - data
+#    - docker
+
+public_lb: []
+internal_lb: []
+
+security: []
+#  example:
+#    app:
+#      - dst_ip: "{{ ip_ranges[environment_name].data }}"
+#        port: "*"
+#        direction: outbound
+#      - dst_ip: "*"
+#        port: "5432"
+#        direction: outbound
+#    data:
+#      - src_ip: "{{ ip_ranges[environment_name].app }}"
+#        port: "1152"
+#        # all ports app to data
+#      - src_ip: "{{ ip_ranges[environment_name].app }}"
+#        port: "*"
+#    docker:
+#      - dst_ip: "{{ ip_ranges[environment_name].app }}"
+#        port: "*"
+#        direction: outbound
+
+all_tiers_security: []
+#  example:
+#    # DNS to mgmt
+#    - dst_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "53"
+#      direction: outbound
+#      protocol: "*"
+#    # NTP to mgmt
+#    - dst_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "123"
+#      protocol: "udp"
+#      direction: outbound
+#    # zabbix to mgmt
+#    - dst_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "10050"
+#      direction: outbound
+#    # TCP 80 / http to mgmt
+#    - dst_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "80"
+#      direction: outbound
+#    # TCP 443 / http to mgmt
+#    - dst_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "443"
+#      direction: outbound
+#    # ssh from mgmt
+#    - src_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "22"
+#    # ssh port 868 from mgmt
+#    - src_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "868"
+#    # TCP 636 / LDAP to mgmt
+#    - dst_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "636"
+#      direction: outbound
+#    # tcp port 8080 from mgmt
+#    - src_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "8080"
+#    # tcp port 18080 from mgmt - ideally do just for mgmt to app02 eventually
+#    - src_ip: "{{ ip_ranges['mgmt'].address_space }}"
+#      port: "18080"
+
+default_server_vars: &default_server_vars
+  size: "Standard_DS2_v2"
+  count: 2
+
+mgmt_default_server_vars: &mgmt_default_server_vars
+  size: "Standard_DS2_v2"
+  dev: false
+  dmz: false
+  blobstore_s: false
+  os: linux
+
+mgmt_servers:
+  # exampleWindoze
+  #   os: "windows"
+  #   role_tag: "windows_example"
+  # exampleDMZbox:
+  #   dmz: true
+  #   role_tag: "something good"
+  Jumpboxing01:
+    dmz: true
+    size: "Standard_DS3_v2"
+    os: "windows"
+    role_tag: "jumpboxing"
+  BuildingAgentX02:
+    size: "Standard_DS3_v2"
+    dev: true
+    role_tag: "buildagentx"
+    additional_disk_size_gb: "1024"
+  BuildingAgentZ01:
+    size: "Standard_DS3_v2"
+    dev: false
+    role_tag: "devopsbuilding"
+    additional_disk_size_gb: "1024"
+
+servers:
+  ccidam:
+    prod:
+      - name: proxy
+        role_tag: proxy
+        count: 1
+  probate:
+    demo:
+      - name: web
+        env_tag: demo
+        role_tag: frontend
+      - name: app
+        env_tag: demo
+        role_tag: backend
+      - name: cache
+        env_tag: demo
+        role_tag: redis
+      - name: data
+        count: 1
+        env_tag: demo
+  cmc:
+    demo:
+      - name: web
+        role_tag: frontend
+      - name: app
+        role_tag: backend
+      - name: cache
+        count: 1
+        role_tag: redis
+      - name: data
+        count: 1
+    preprod:
+      - name: web
+        role_tag: frontend
+      - name: app
+        role_tag: backend
+      - name: cache
+        count: 1
+        role_tag: redis
+      - name: data
+        count: 1
+  divorce:
+    demo:
+      - name: web
+        env_tag: demo
+        role_tag: frontend
+      - name: app
+        env_tag: demo
+        role_tag: backend
+      - name: cache
+        env_tag: demo
+        role_tag: redis
+      - name: data
+        count: 1
+        env_tag: demo
+  ccfr:
+    demo:
+      - name: web
+        env_tag: demo
+        role_tag: frontend
+      - name: app
+        env_tag: demo
+        role_tag: backend
+      - name: cache
+        env_tag: demo
+        role_tag: redis
+      - name: data
+        count: 1
+        env_tag: demo
+    preprod:
+      - name: web
+        role_tag: frontend
+      - name: app
+        role_tag: backend
+      - name: cache
+        count: 1
+        role_tag: redis
+      - name: data
+  ccpay:
+    preprod:
+      - name: web
+        role_tag: frontend
+      - name: app
+        role_tag: backend
+      - name: cache
+        count: 1
+        role_tag: redis
+      - name: data
+        count: 1
+  sscs:
+    demo:
+      - name: web
+        role_tag: frontend
+        count: 2
+        env_tag: demo
+      - name: webadmin
+        role_tag: admin
+        count: 2
+        env_tag: demo
+      - name: app
+        role_tag: backend
+        count: 2
+        env_tag: demo
+      - name: cache
+        role_tag: redis
+        count: 1
+        env_tag: demo
+      - name: data
+        count: 1
+        env_tag: demo
+  ccd:
+    devb:
+      - name: web
+        env_tag: demo
+        product_tag: ccdata
+        role_tag: frontend
+        count: 1
+  dm:
+    dev:
+      - name: web
+        env_tag: dev
+        count: 2
+        role_tag: frontend
+      - name: webpl
+        env_tag: dev
+        count: 2
+        role_tag: frontend-pl
+      - name: webshow
+        env_tag: dev
+        count: 1
+        role_tag: frontend-webshow
+      - name: app
+        env_tag: dev
+        count: 2
+        role_tag: backend
+      - name: cache
+        env_tag: dev
+        count: 1
+        role_tag: redis
+      - name: data
+        additional_disk_size_gb: "512"
+        count: 1
+        env_tag: dev
+    test:
+      - name: web
+        env_tag: test
+        count: 2
+        role_tag: frontend
+      - name: webpl
+        env_tag: test
+        count: 2
+        role_tag: frontend-pl
+      - name: webshow
+        env_tag: test
+        count: 1
+        role_tag: frontend-webshow
+      - name: app
+        env_tag: test
+        count: 2
+        role_tag: backend
+      - name: cache
+        env_tag: test
+        count: 1
+        role_tag: redis
+      - name: data
+        additional_disk_size_gb: "512"
+        count: 1
+        env_tag: test
+
+default_web_apps_vars: &default_web_apps_vars
+  tier: "Standard"
+  size: "S1"
+  capacity: "0"
+  kind: "linux"
+
+# Bad name, this just creates App Service Plans, not App Services
+web_apps: []
+#  example:
+#    - name: api
+#    - name: web
+#    - name: web-admin
+
+databases: []
+#  example:
+#    - name: <lookedupfromvault>
+#      user: <lookedupfromvault>
+#      password: <lookedupfromvault>
+#      whitelist_ips:
+#        - ["10.0.2.3","192.168.123.10"]
+
+# need to think about this, when we are building old and new systems
+ip_ranges:
+  sandbox:
+    address_space: "10.0.1.0/16"
+    unassigned1: "10.0.2.0/23"
+    unassigned2: "10.0.3.0/23"
+    docker: "10.0.4.0/23"
+    app: "10.0.8.0/23"
+    data: "10.0.6.0/23"
+  dev:
+    address_space: "172.0.0.1/24"
+    unassigned1: "172.0.1.1/24"
+    unassigned2: "172.0.2.1/24"
+    docker: "172.0.3.1/24"
+    app: "172.0.4.1/24"
+    data: "172.0.5.1/24"
+  mgmt:
+    address_space: "192.168.10.0/24"
+
+key_write: &key_write
+  key_permissions:
+    - "backup"
+    - "create"
+    - "decrypt"
+    - "delete"
+    - "encrypt"
+    - "get"
+    - "import"
+    - "list"
+    - "purge"
+    - "recover"
+    - "restore"
+    - "sign"
+    - "unwrapKey"
+    - "update"
+    - "verify"
+    - "wrapKey"
+sec_write: &sec_write
+  secret_permissions:
+    - "backup"
+    - "delete"
+    - "get"
+    - "list"
+    - "purge"
+    - "recover"
+    - "restore"
+    - "set"
+
+key_read: &key_read
+  key_permissions:
+    - "get"
+    - "list"
+sec_read: &sec_read
+  secret_permissions:
+    - "get"
+    - "list"
+
+key_vault_permissions:
+  # max of 16 users, as per TF docs.
+  # just an example user for now:
+  dcd_dev_jenkins:
+    object_id: "lookedupfromvault"
+    <<: *key_read
+    <<: *sec_read
+  devops:
+    object_id: "lookedupfromvault"
+    <<: *key_write
+    <<: *sec_write
+
+storage_account_tier: "Standard"
+storage_account_replication_type: "LRS"
+
+# prod jenkins key:
+ssh_key: "<publicsshkey>"
+
+template_warning: "GENERATED BY ANSIBLE, DO NOT EDIT DIRECTLY"
+
+# maps for legacy networks
+vnet_map:
+  demoa: "betaNLVNet"
+  demo: "betaNLVNet"
+  deva: "betaNLVNet"
+  dev: "betaNLVNet"
+  devb: "betaNLVNet"
+  test: "betaNLVNet"
+  preprod: "betaPreProdVNet"
+  prod: "betaProdVNet"
+
+vnet_rg_map:
+  demoa: "betaReformCoreRG"
+  demo: "betaReformCoreRG"
+  deva: "betaReformCoreRG"
+  dev: "betaReformCoreRG"
+  devb: "betaReformCoreRG"
+  test: "betaReformCoreRG"
+  preprod: "betaPreProdCoreRG"
+  prod: "betaProdCoreRG"
+
+subnet_prefix_map:
+  demoa: "betaNLDemoA"
+  demo: "betaNLDemoA"
+  deva: "betaNLDevA"
+  dev: "betaNLDevA"
+  devb: "betaNLDevB"
+  test: "betaNLDevB"
+  preprod: "betaPreProd"
+  prod: "betaProd"
+
+# map for ccidam sn exceptions
+
+ccidam_subnet_prefix_map:
+  demoa:
+    web: "betaNLCCIdamWebSN"
+    app: "betaNLCCIdamAppbSN"
+    cache: "betaNLCCIdamCacheSN"
+    data: "betaNLCCIdamDataSN"
+  demo:
+    web: "betaNLCCIdamWebSN"
+    app: "betaNLCCIdamAppSN"
+    cache: "betaNLCCIdamCacheSN"
+    data: "betaNLCCIdamDataSN"
+  dev:
+    web: "betaNLCCIdamWebSN"
+    app: "betaNLCCIdamAppbSN"
+    cache: "betaNLCCIdamCacheSN"
+    data: "betaNLCCIdamDataSN"
+  deva:
+    web: "betaNLCCIdamWebSN"
+    app: "betaNLCCIdamAppbSN"
+    cache: "betaNLCCIdamCacheSN"
+    data: "betaNLCCIdamDataSN"
+  devb:
+    web: "betaNLCCIdamWebSN"
+    app: "betaNLCCIdamAppbSN"
+    cache: "betaNLCCIdamCacheSN"
+    data: "betaNLCCIdamDataSN"
+  test:
+    web: "betaNLCCIdamWebSN"
+    app: "betaNLCCIdamAppbSN"
+    cache: "betaNLCCIdamCacheSN"
+    data: "betaNLCCIdamDataSN"
+  preprod:
+    web: "betaPreProdCCIdamWebSN"
+    app: "betaPreProdCCIdamAppSN"
+    cache: "betaPreProdCCIdamCacheSN"
+    data: "betaPreProdCCIdamDataSN"
+  prod:
+    web: "betaProdCCIdamWebSN"
+    proxy: "betaProdCCIdamWebSN"
+    app: "betaProdCCIdamAppSN"
+    cache: "betaProdCCIdamCacheSN"
+    data: "betaProdCCIdamDataSN"
+
+# Not used yet
+# Might break things, who knows?
+destroy_nightly:
+  cmc:
+    - demo

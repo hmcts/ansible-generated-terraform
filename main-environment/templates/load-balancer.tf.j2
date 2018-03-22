@@ -1,0 +1,70 @@
+# {{ template_warning }}
+
+# Create External load balancers
+
+{% if product in public_lb %}
+{% for lb_ext in public_lb[product] %}
+resource "azurerm_lb" "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LB" {
+  name                = "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LB"
+  location            = "{{ location }}"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+
+  frontend_ip_configuration {
+    name                 = "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LBCFG"
+    public_ip_address_id = "${azurerm_public_ip.{{ environment_name }}{{ product | title }}{{ lb_ext | title }}PIP.id}"
+  }
+}
+
+resource "azurerm_lb_backend_address_pool" "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LBPool" {
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  loadbalancer_id     = "${azurerm_lb.{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LB.id}"
+  name                = "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LBPool"
+}
+
+
+resource "azurerm_lb_rule" "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}443" {
+  resource_group_name            = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  loadbalancer_id                = "${azurerm_lb.{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LB.id}"
+  name                           = "LBRule443"
+  protocol                       = "Tcp"
+  frontend_port                  = 443
+  backend_port                   = 443
+  frontend_ip_configuration_name = "{{ environment_name }}{{ product | title }}{{ lb_ext | title }}LBCFG"
+}
+{% endfor %}
+{% endif %}
+
+
+# Create Internal load balancers
+
+{% if product in internal_lb %}
+{% for lb_int in internal_lb[product] %}
+resource "azurerm_lb" "{{ environment_name }}{{ product | title }}{{ lb_int | title }}LB" {
+  name                = "{{ environment_name }}{{ product | title }}{{ lb_int | title }}LB"
+  location            = "{{ location }}"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+
+  frontend_ip_configuration {
+    name                 = "{{ environment_name }}{{ product | title }}{{ lb_int | title }}LBCFG"
+    subnet_id = "${azurerm_subnet.{{ environment_name }}{{ product | title }}{{ lb_int | title }}SN.id}"
+  }
+}
+
+resource "azurerm_lb_backend_address_pool" "{{ environment_name }}{{ product | title }}{{ lb_int | title }}LBPool" {
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  loadbalancer_id     = "${azurerm_lb.{{ environment_name }}{{ product | title }}{{ lb_int | title }}LB.id}"
+  name                = "{{ environment_name }}{{ product | title }}{{ lb_int | title }}LBPool"
+}
+
+
+resource "azurerm_lb_rule" "{{ environment_name }}{{ product | title }}{{ lb_int | title }}443" {
+  resource_group_name            = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  loadbalancer_id                = "${azurerm_lb.{{ environment_name }}{{ product | title }}{{ lb_int | title }}LB.id}"
+  name                           = "LBRule443"
+  protocol                       = "Tcp"
+  frontend_port                  = 443
+  backend_port                   = 443
+  frontend_ip_configuration_name = "{{ environment_name }}{{ product | title }}{{ lb_int | title }}LBCFG"
+}
+{% endfor %}
+{% endif %}

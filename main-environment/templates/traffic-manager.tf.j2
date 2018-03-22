@@ -1,0 +1,30 @@
+# {{ template_warning }}
+
+# traffic manager profile for just production LB for everything else
+
+
+resource "azurerm_traffic_manager_profile" "{{ environment_name }}{{ product | title }}TM" {
+  name                = "{{ environment_name }}{{ product | title }}TM"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  traffic_routing_method = "Weighted"
+
+  dns_config {
+    relative_name = "{{ environment_name }}{{ product | title }}TM" # (dns name) this was causing 409 errors - maybe clashing with an existing name
+    ttl           = 100
+  }
+
+  monitor_config {
+    protocol = "http"
+    port     = 80
+    path     = "/"
+  }
+}
+
+resource "azurerm_traffic_manager_endpoint" "{{ environment_name }}{{ product | title }}-TME" {
+  name                = "{{ environment_name }}{{ product | title }}TME"
+  resource_group_name = "${azurerm_resource_group.{{ environment_name }}{{ product | title }}VnetRG.name}"
+  profile_name        = "${azurerm_traffic_manager_profile.{{ environment_name }}{{ product | title }}TM.name}"
+  target              = "{{ environment_name }}{{ product | title }}.reform.hmcts.net" #TBC
+  type                = "externalEndpoints"
+  weight              = 100
+}

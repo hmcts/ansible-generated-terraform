@@ -1,0 +1,114 @@
+#!groovy
+
+//
+// Example Jenkinsfile, slightly modified from working code.
+// Probably not usable in current state, lacking library amongst other elements.
+// Saved for reference.
+//
+// This Jenkinsfile was run on a PR, it doesn't build environments.
+//
+
+def channel = '#devops-builds'
+def product = 'management'
+
+properties(
+  [[$class: 'GithubProjectProperty', projectUrlStr: 'https://github.com/hmcts/ansible-generated-terraform/'],
+   pipelineTriggers([[$class: 'GitHubPushTrigger']])]
+)
+
+@Library('Reform') _
+
+node {
+  ws('ansible-generated-terraform') { // This must be the name of the role otherwise ansible won't find the role
+    try {
+      wrap([$class: 'AnsiColorBuildWrapper', colorMapName: 'xterm']) {
+
+        stage('Checkout') {
+          checkout scm
+        }
+
+        stage('Start containers') {
+          dir ('main-environment') {
+            sh 'molecule create'
+          }
+        }
+
+        stage('if else check') {
+          script {
+            if (product.equals('management')) {
+              sh """
+                echo "Your product is set to management"
+              """
+            } else {
+              sh """
+                echo "Your product is unset."
+              """
+            }
+          }
+        }
+
+        stage('Run tests') {
+          dir ('main-environment') {
+            sh '''
+            molecule syntax
+            molecule verify
+            '''
+          }
+        }
+
+        stage('Run role') {
+          dir ('main-environment') {
+            sh 'molecule converge'
+          }
+        }
+
+//        stage('Check idempotent') {
+//          dir ('main-environment') {
+//            sh 'molecule idempotence'
+//          }
+//        }
+
+        withCredentials([
+            [$class: 'StringBinding', credentialsId: 'IDAM_ARM_CLIENT_SECRET', variable: 'ARM_CLIENT_SECRET'],
+            [$class: 'StringBinding', credentialsId: 'IDAM_ARM_CLIENT_ID', variable: 'ARM_CLIENT_ID'],
+            [$class: 'StringBinding', credentialsId: 'IDAM_ARM_TENANT_ID', variable: 'ARM_TENANT_ID'],
+            [$class: 'StringBinding', credentialsId: 'IDAM_ARM_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID']
+        ]) {
+
+          stage('TF init and plan for main-environment') {
+            sh '''
+            # otherwise ansible-generated stays owned by root
+            sudo chown -R jenkins main-environment/ansible-generated
+            find
+
+            for dir in \$(find main-environment/ansible-generated/*/*/* -type d); do
+
+              cd \$dir
+              terraform version
+              terraform init -lock=false
+              terraform plan -lock=false
+              cd -
+
+            done
+            '''
+          }
+
+        }
+      }
+
+    } catch (err) {
+      notifyBuildFailure channel: "${channel}"
+      throw err
+    } finally {
+      stage('Cleanup') {
+        dir ('main-environment') {
+          sh '''
+            sudo chown -R jenkins ansible-generated
+            molecule destroy
+            '''
+        }
+        deleteDir()
+      }
+    }
+  }
+}

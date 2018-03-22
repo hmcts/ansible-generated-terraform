@@ -1,0 +1,5 @@
+# {{ template_warning }}
+
+provider "azurerm" {
+  subscription_id = "{{ environments_azure_subscription_ids[product][environment_name] }}"
+}

@@ -1,0 +1,137 @@
+# {{ template_warning }}
+
+# Main VM storage account
+resource "azurerm_storage_account" "{{ server[-24:] | lower }}" {
+  name                = "{{ server[-24:] | lower }}"
+
+  {% if server_contents.dev is defined and server_contents.dev == true %}
+  resource_group_name = "reformMgmtDevToolRG"
+  {% elif server_contents.dmz is defined and server_contents.dmz == true %}
+  resource_group_name = "reformMgmtDmzRG"
+  {% else %}
+  resource_group_name = "reformMgmtDevopsToolRG"
+  {% endif %}
+
+
+  location     = "{{ location }}"
+  account_tier = "{{ storage_account_tier }}"
+  account_replication_type = "{{ storage_account_replication_type }}"
+
+  tags {
+  {% if server_contents.dmz is defined and server_contents.dmz == true %}
+    env = "dmz"
+  {% else %}
+    env = "mgmt"
+  {% endif %}
+    product = "mgmt"
+  }
+}
+
+{% if server_contents.blobstore_s == true %}
+# Premium blobstore if set to true
+
+resource "azurerm_storage_account" "{{ server[-23:] | lower }}b" {
+  name                     = "{{ server[-23:] | lower }}b"
+
+  {% if server_contents.dev is defined and server_contents.dev == true %}
+  resource_group_name = "reformMgmtDevToolRG"
+  {% elif server_contents.dmz is defined and server_contents.dmz == true %}
+  resource_group_name = "reformMgmtDmzRG"
+  {% else %}
+  resource_group_name = "reformMgmtDevopsToolRG"
+  {% endif %}
+
+  location                   = "uksouth"
+  account_tier               = "Standard"
+  account_replication_type   = "LRS"
+  account_kind               = "BlobStorage"
+  enable_blob_encryption     = true
+  enable_https_traffic_only  = true
+}
+
+resource "azurerm_storage_container" "{{ server }}blob" {
+  name                  = "{{ server | lower }}blob"
+
+  {% if server_contents.dev is defined and server_contents.dev == true %}
+  resource_group_name = "reformMgmtDevToolRG"
+  {% elif server_contents.dmz is defined and server_contents.dmz == true %}
+  resource_group_name = "reformMgmtDmzRG"
+  {% else %}
+  resource_group_name = "reformMgmtDevopsToolRG"
+  {% endif %}
+
+  storage_account_name  = "${azurerm_storage_account.{{ server[-23:] | lower }}b.name}"
+  container_access_type = "blob"
+}
+{% endif %}
+
+# Availability Set
+resource "azurerm_availability_set" "{{ server | lower }}AVset" {
+  name                = "{{ server | lower }}AVset"
+  location            = "{{ location }}"
+
+  {% if server_contents.dev is defined and server_contents.dev == true %}
+  resource_group_name = "reformMgmtDevToolRG"
+  {% elif server_contents.dmz is defined and server_contents.dmz == true %}
+  resource_group_name = "reformMgmtDmzRG"
+  {% else %}
+  resource_group_name = "reformMgmtDevopsToolRG"
+  {% endif %}
+
+  tags {
+  {% if server_contents.dmz is defined and server_contents.dmz == true %}
+    env = "dmz"
+  {% else %}
+    env = "mgmt"
+  {% endif %}
+    product = "mgmt"
+  }
+}
+
+module "vm-{{ server }}" {
+{% if server_contents.os == "windows" %}
+  source = "../../../modules/mgmt-windows-vm"
+{% elif server_contents.additional_disk_size_gb is defined %}
+  source = "../../../modules/mgmt-datadisk-vm"
+{% else %}
+  source = "../../../modules/mgmt-vm"
+{% endif %}
+
+  vm_name = "{{ server }}"
+
+  {% if server_contents.additional_disk_size_gb is defined %}
+  additional_disk_size_gb = "{{ server_contents.additional_disk_size_gb }}"
+  {% endif %}
+
+  {% if server_contents.dev is defined and server_contents.dev == true %}
+  resource_group = "reformMgmtDevToolRG"
+  {% elif server_contents.dmz is defined and server_contents.dmz == true %}
+  resource_group = "reformMgmtDmzRG"
+  {% else %}
+  resource_group = "reformMgmtDevopsToolRG"
+  {% endif %}
+
+  {% if server_contents.dev is defined and server_contents.dev == true %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids.management }}/resourceGroups/reformMgmtCoreRG/providers/Microsoft.Network/virtualNetworks/reformMgmtCoreVNet/subnets/reformMgmtDevToolSN"
+  {% elif server_contents.dmz is defined and server_contents.dmz == true %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids.management }}/resourceGroups/reformMgmtCoreRG/providers/Microsoft.Network/virtualNetworks/reformMgmtCoreVNet/subnets/reformMgmtDmzSN"
+  {% else %}
+  subnet_id = "/subscriptions/{{ environments_azure_subscription_ids.management }}/resourceGroups/reformMgmtCoreRG/providers/Microsoft.Network/virtualNetworks/reformMgmtCoreVNet/subnets/reformMgmtDevopsToolSN"
+  {% endif %}
+
+  avset_id = "${azurerm_availability_set.{{ server | lower }}AVset.id}"
+  storage_account = "${azurerm_storage_account.{{ server[-24:] | lower }}.name}"
+  diagnostics_storage_account = "${azurerm_storage_account.{{ server[-24:] | lower }}.name}"
+  location = "{{ location }}"
+  vm_size = "{{ server_contents.size }}"
+  instance_count = 1
+  ssh_key = "{{ ssh_key }}"
+  product = "mgmt"
+  {% if server_contents.dmz is defined and server_contents.dmz == true %}
+  env = "dmz"
+  {% else %}
+  env = "mgmt"
+  {% endif %}
+  role = "{{ server_contents.role_tag | default(server) }}"
+}
+
