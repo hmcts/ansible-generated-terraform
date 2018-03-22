@@ -208,20 +208,20 @@ mgmt_servers:
   # exampleDMZbox:
   #   dmz: true
   #   role_tag: "something good"
-  rdoRDPJump01:
+  Jumpboxing01:
     dmz: true
     size: "Standard_DS3_v2"
     os: "windows"
-    role_tag: "rdpjumpbox"
-  reformMgmtDevBuildAgent02:
+    role_tag: "jumpboxing"
+  BuildingAgentX02:
     size: "Standard_DS3_v2"
     dev: true
-    role_tag: "buildagent"
+    role_tag: "buildagentx"
     additional_disk_size_gb: "1024"
-  reformMgmtDevOpsGOCD01:
+  BuildingAgentZ01:
     size: "Standard_DS3_v2"
     dev: false
-    role_tag: "devopsgocd"
+    role_tag: "devopsbuilding"
     additional_disk_size_gb: "1024"
 
 servers:
